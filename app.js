@@ -13,13 +13,18 @@ const links = {};
 
 // Generate short link
 app.post("/create", (req, res) => {
-    const { longUrl, iosUrl, androidUrl } = req.body;
+    const { longUrl, iosUrl, androidPackage, androidUrl } = req.body;
     if (!longUrl) {
         return res.status(400).json({ error: "longUrl is required" });
     }
 
+    const androidIntent = androidPackage
+        ? `intent://${longUrl.replace(/^https?:\/\//, "")}#Intent;package=${androidPackage};scheme=https;end;`
+        : androidUrl;
+
     const shortCode = shortid.generate();
-    links[shortCode] = { longUrl, iosUrl, androidUrl };
+    links[shortCode] = { longUrl, iosUrl, androidUrl: androidIntent || longUrl };
+
     res.json({ shortLink: `${req.protocol}://${req.get("host")}/${shortCode}` });
 });
 
@@ -33,7 +38,7 @@ app.get("/:code", (req, res) => {
         return res.redirect(entry.iosUrl || entry.longUrl);
     }
     if (userAgent.includes("android")) {
-        return res.redirect(entry.androidUrl || entry.longUrl);
+        return res.redirect(entry.androidUrl); // Uses intent:// for any app
     }
     res.redirect(entry.longUrl);
 });
